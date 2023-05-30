@@ -5,7 +5,7 @@ This repository contains the code to reproduce the experiments of the paper _Con
 The notebook ``CP_NA_Synthetic.ipynb`` allows to reproduce the synthetic experiments, while ``CP_NA_Semi-synthetic.ipynb`` focuses on the semi-synthetic experiments.  
 The corresponding ``_Plots`` notebooks contain the code for displaying the results in the same format as in the paper.
 
-The core code for the algorithms CP-MDA-Exact and CP-MDA-Nested can be found in the ```prediciton.py``` file.
+The core code for the algorithms CP-MDA-Exact and CP-MDA-Nested can be found in the ```prediction.py``` file.
 
 ``imputation.py`` contains the functions used for imputation of the data sets.  
 ``generation.py`` allows to generate synthetic data (outcome and features, but also missing values).  
