@@ -444,7 +444,7 @@ def calibrate_predict_intervals(pred_cal, Y_cal, pred_test, groups_cal=None, gro
 
 def calibrate_masking_predict_intervals(fitted_basemodel, imputer, X_cal, M_cal, Y_cal,
                                         X_mis_test, features_test, M_test, mask,
-                                        groups_test, subset=True, target='Quantiles',
+                                        groups_test, exact=True, target='Quantiles',
                                         basemodel='Linear', alpha=0.1):
 
     assert target in ['Quantiles'], 'regression must be Quantiles.'
@@ -456,7 +456,7 @@ def calibrate_masking_predict_intervals(fitted_basemodel, imputer, X_cal, M_cal,
     n_test = features_test.shape[0]
     q_scores_test = np.empty(n_test)
 
-    if subset == False:
+    if exact == False:
         pred_test = {'y_inf': np.empty(n_test),
                      'y_sup': np.empty(n_test)}
 
@@ -470,7 +470,7 @@ def calibrate_masking_predict_intervals(fitted_basemodel, imputer, X_cal, M_cal,
 
         empty = False
 
-        if subset == True:
+        if exact == True:
             ind_subsample = np.all(M_cal[:, pattern == 0] == 0, axis=1)
             if np.sum(ind_subsample) == 0:
                 empty = True
@@ -499,7 +499,7 @@ def calibrate_masking_predict_intervals(fitted_basemodel, imputer, X_cal, M_cal,
 
             scores = np.maximum(cal_predictions['y_inf']-Y_cal_masking, Y_cal_masking-cal_predictions['y_sup'])
 
-        if subset == True:
+        if exact == True:
 
             if not empty:
 
@@ -562,7 +562,7 @@ def calibrate_masking_predict_intervals(fitted_basemodel, imputer, X_cal, M_cal,
                 pred_test['y_inf'][(np.array(groups_test) == id_pattern).flatten()] = -np.quantile(all_preds['y_inf'], (1 - alpha) * (1 + 1 / nb_cal), axis=1)
                 pred_test['y_sup'][(np.array(groups_test) == id_pattern).flatten()] = np.quantile(all_preds['y_sup'], (1 - alpha) * (1 + 1 / nb_cal), axis=1)
 
-    if subset == True:
+    if exact == True:
         pred_test = predict_basemodel(fitted_basemodel, features_test, target, basemodel, alpha)
         interval_predictions = {'y_inf': pred_test['y_inf']-q_scores_test,
                                 'y_sup': pred_test['y_sup']+q_scores_test}
@@ -707,7 +707,7 @@ def oracle_mean(M_test, X_test, beta, mean, cov):
 
     return predictions
 
-def run_experiments(data, alpha, methods, basemodels, params_basemodel, masks, protections, subsets=['False'], imputation=None,
+def run_experiments(data, alpha, methods, basemodels, params_basemodel, masks, protections, exacts=['False'], imputation=None,
                     params_reg={}, params_noise={},
                     parent_results='results'):
 
@@ -719,9 +719,9 @@ def run_experiments(data, alpha, methods, basemodels, params_basemodel, masks, p
         for basemodel in basemodels:
             for mask in masks:
                 for protection in protections:
-                    if method == 'CQR_Masking_Cal':
-                        for subset in subsets:
-                            name_temp = files.get_name_method(method, basemodel, mask, protection, subset)
+                    if method == 'CQR_MDA':
+                        for exact in exacts:
+                            name_temp = files.get_name_method(method, basemodel, mask, protection, exact)
                             if not name_temp in name_pipeline:
                                 name_pipeline.append(name_temp)
                     else:
@@ -831,7 +831,7 @@ def run_experiments(data, alpha, methods, basemodels, params_basemodel, masks, p
                                     (results[key]['Y_sup'], np.array(preds[key]['y_sup'])))
                         results_methods[pipeline] = results
 
-            elif method == 'CQR_Masking_Cal':
+            elif method == 'CQR_MDA':
 
                 assert imputation is not None, "imputation must be specified for Masking"
 
@@ -889,15 +889,15 @@ def run_experiments(data, alpha, methods, basemodels, params_basemodel, masks, p
                         for key in keys_test:
                             groups_test[key] = list(map(utils.pattern_to_id, M_test[key].astype(int)))
 
-                        for subset in subsets:
-                            pipeline = files.get_name_method(method, basemodel, mask, subset=subset)
+                        for exact in exacts:
+                            pipeline = files.get_name_method(method, basemodel, mask, exact=exact)
 
                             preds = dict.fromkeys(keys_test)
                             for key in keys_test:
                                 pred = calibrate_masking_predict_intervals(trained_model, imputer_masking,
                                                                            X_mis_cal, M_cal, Y_cal,
                                                                            X_mis_test[key], features_test[key], M_test[key], mask,
-                                                                           groups_test=groups_test[key], subset=subset,
+                                                                           groups_test=groups_test[key], exact=exact,
                                                                            target=target, basemodel=basemodel, alpha=alpha)
                                 preds[key] = pred
 
@@ -1038,7 +1038,7 @@ def run_experiments(data, alpha, methods, basemodels, params_basemodel, masks, p
     return results_methods, name_pipeline
 
 def run_real_experiments(data, alpha, methods, basemodels, params_basemodel, masks, conformalized, protections,
-                         n_rep, parent_results='results', imputation=None, data_missing=None, subset=True):
+                         n_rep, parent_results='results', imputation=None, data_missing=None, exact=True):
 
     test_size = len(data['Y']['Test'][0,:])
     d = data['X_imp']['Train'].shape[2]
@@ -1048,7 +1048,7 @@ def run_real_experiments(data, alpha, methods, basemodels, params_basemodel, mas
         for basemodel in basemodels:
             for mask in masks:
                 for protection in protections:
-                    name_temp = files.get_name_method(method, basemodel, mask, protection, conformalized, subset)
+                    name_temp = files.get_name_method(method, basemodel, mask, protection, conformalized, exact)
                     if not name_temp in name_pipeline:
                         name_pipeline.append(name_temp)
 
@@ -1076,7 +1076,7 @@ def run_real_experiments(data, alpha, methods, basemodels, params_basemodel, mas
         Y_test = data['Y']['Test'][k,:]
 
         for method in methods:
-            if method == 'CQR_Masking_Cal':
+            if method == 'CQR_MDA':
 
                 assert imputation is not None, "imputation must be specified for Masking"
 
@@ -1102,13 +1102,13 @@ def run_real_experiments(data, alpha, methods, basemodels, params_basemodel, mas
 
                         trained_model = fit_basemodel(features_train, Y_train, target=target, basemodel=basemodel, alpha=alpha,
                                                       params_basemodel=params_basemodel)
-                        pipeline = files.get_name_method(method, basemodel, mask, subset=subset)
+                        pipeline = files.get_name_method(method, basemodel, mask, exact=exact)
                         groups_test = list(map(utils.pattern_to_id, M_test.astype(int)))
 
                         pred = calibrate_masking_predict_intervals(trained_model, imputer_masking,
                                                                    X_mis_cal, M_cal, Y_cal, features_test,
                                                                    M_test, mask,
-                                                                   groups_test=groups_test, subset=subset, target=target,
+                                                                   groups_test=groups_test, exact=exact, target=target,
                                                                    basemodel=basemodel, alpha=alpha)
                         results = results_methods[pipeline]
                         if results_methods[pipeline] == None:

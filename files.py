@@ -190,10 +190,12 @@ def write_file(parent, name, ext, file):
         with lzma.open(path,'wb') as f:
             pickle.dump(file, f)
 
-def get_name_method(method, basemodel=None, mask='No', protection='No', subset=False):
-    if subset == True:
-        assert method == 'CQR_Masking_Cal', 'With subsetting calibration you should be masking.'
-        method = method + '_subset'
+def get_name_method(method, basemodel=None, mask='No', protection='No', exact=False):
+    if exact == True:
+        assert method == 'CQR_MDA', 'With MDA-Exact you should be masking.'
+        method = method + '_Exact'
+    if method == 'CQR_MDA':
+        method = method + '_Nested'
     if method == 'Oracle':
         name = method
     elif method == 'Oracle_mean' and protection=='No':
@@ -202,9 +204,9 @@ def get_name_method(method, basemodel=None, mask='No', protection='No', subset=F
         name = '_'.join([method, protection])
     elif protection == 'No' and mask == 'No':
         name = '_'.join([method, basemodel])
-    elif method in ['QR', 'QR_TrainCal', 'CQR_Masking_Cal', 'CQR_Masking_Cal_subset'] and mask == 'No':
+    elif method in ['QR', 'QR_TrainCal', 'CQR_MDA_Nested', 'CQR_MDA_Exact'] and mask == 'No':
         name = '_'.join([method, basemodel])
-    elif method in ['QR', 'QR_TrainCal', 'CQR_Masking_Cal', 'CQR_Masking_Cal_subset'] and mask == 'Yes':
+    elif method in ['QR', 'QR_TrainCal', 'CQR_MDA_Nested', 'CQR_MDA_Exact'] and mask == 'Yes':
         name = '_'.join([method, basemodel, 'Mask'])
     elif protection == 'No':
         name = '_'.join([method, basemodel, 'Mask'])
